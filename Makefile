@@ -1,16 +1,20 @@
 PROJECTS = port_scanner tgrep
 
-all: $(PROJECTS)
+all: $(PROJECTS) btop
 
 $(PROJECTS):
 	$(MAKE) -C $@
+
+btop:
+	$(MAKE) -C btop
 
 clean:
 	for p in $(PROJECTS); do $(MAKE) -C $$p clean; done
 
 fclean:
 	for p in $(PROJECTS); do $(MAKE) -C $$p fclean; done
+	$(MAKE) -C btop clean
 
 re: fclean all
 
-.PHONY: all clean fclean re $(PROJECTS)
+.PHONY: all clean fclean re $(PROJECTS) btop
