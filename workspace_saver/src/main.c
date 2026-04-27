@@ -5,6 +5,7 @@
 #include <limits.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <time.h>
@@ -81,17 +82,26 @@ static int	resolve_absolute_dir(const char *input, char *out, size_t out_size)
 static int	write_workspace_file(const char *file_path, int dir_count, char **dirs)
 {
 	FILE		*fp;
+	int			fd;
 	int			i;
 	time_t		now;
 	struct tm	now_tm;
 	char		time_buf[64];
 
-	fp = fopen(file_path, "w");
-	if (!fp)
+	fd = open(file_path, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+	if (fd < 0)
 		return (0);
+	fp = fdopen(fd, "w");
+	if (!fp)
+	{
+		close(fd);
+		return (0);
+	}
 	now = time(NULL);
-	localtime_r(&now, &now_tm);
-	strftime(time_buf, sizeof(time_buf), "%Y-%m-%d %H:%M:%S %z", &now_tm);
+	if (now == (time_t)-1 || localtime_r(&now, &now_tm) == NULL
+		|| strftime(time_buf, sizeof(time_buf), "%Y-%m-%d %H:%M:%S %z",
+			&now_tm) == 0)
+		snprintf(time_buf, sizeof(time_buf), "unknown");
 	fprintf(fp, "# saved_at=%s\n", time_buf);
 	i = 0;
 	while (i < dir_count)
@@ -121,16 +131,23 @@ int	main(int argc, char **argv)
 	int		i;
 	char	**inputs;
 	char	*single_input[1];
-	char	*resolved_dirs[argc > 2 ? argc - 2 : 1];
-	int		ok;
+	char	**resolved_dirs;
+	int		status;
 	int		parse_error;
+	int		mem_error;
 
 	if (argc < 2)
-		return (print_usage(argv[0]), 1);
+	{
+		print_usage(argv[0]);
+		return (1);
+	}
 	if (!is_valid_workspace_name(argv[1]))
-		return (fprintf(stderr, "workspace_saver: invalid workspace name\n"), 1);
+		return (fprintf(stderr,
+				"workspace_saver: invalid workspace name (must not be empty and contain only letters, numbers, '_' or '-')\n"), 1);
 	if (!resolve_workspace_dir(workspace_dir, sizeof(workspace_dir)))
-		return (fprintf(stderr, "workspace_saver: unable to prepare config directory\n"), 1);
+		return (fprintf(stderr,
+				"workspace_saver: unable to prepare $HOME/.config/%s (check HOME and permissions)\n",
+				WS_DIR_NAME), 1);
 	if (snprintf(file_path, sizeof(file_path), "%s/%s%s",
 			workspace_dir, argv[1], WS_EXT) >= (int)sizeof(file_path))
 		return (fprintf(stderr, "workspace_saver: workspace path too long\n"), 1);
@@ -147,14 +164,12 @@ int	main(int argc, char **argv)
 		inputs = single_input;
 		dir_count = 1;
 	}
-	i = 0;
-	while (i < dir_count)
-	{
-		resolved_dirs[i] = NULL;
-		i++;
-	}
-	ok = 0;
+	resolved_dirs = calloc((size_t)dir_count, sizeof(*resolved_dirs));
+	if (!resolved_dirs)
+		return (fprintf(stderr, "workspace_saver: out of memory\n"), 1);
+	status = 1;
 	parse_error = 0;
+	mem_error = 0;
 	i = 0;
 	while (i < dir_count)
 	{
@@ -166,24 +181,28 @@ int	main(int argc, char **argv)
 		}
 		resolved_dirs[i] = strdup(abs_path);
 		if (!resolved_dirs[i])
+		{
+			mem_error = 1;
 			break ;
+		}
 		i++;
 	}
-	if (parse_error)
-		ok = 0;
-	else if (i < dir_count && resolved_dirs[i] == NULL)
+	if (mem_error)
 		fprintf(stderr, "workspace_saver: out of memory\n");
-	else if (!write_workspace_file(file_path, dir_count, resolved_dirs))
+	else if (!parse_error
+		&& !write_workspace_file(file_path, dir_count, resolved_dirs))
 		fprintf(stderr, "workspace_saver: failed to write %s\n", file_path);
-	else
-		ok = 1;
+	else if (!parse_error)
+		status = 0;
 	i = 0;
 	while (i < dir_count)
 	{
-		free(resolved_dirs[i]);
+		if (resolved_dirs[i])
+			free(resolved_dirs[i]);
 		i++;
 	}
-	if (!ok)
+	free(resolved_dirs);
+	if (status != 0)
 		return (1);
 	printf("Saved workspace '%s' to %s\n", argv[1], file_path);
 	return (0);
