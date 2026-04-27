@@ -230,7 +230,7 @@ static int	run_ui(t_dirs *dirs)
 	{
 		erase();
 		mvprintw(0, 0, "Workspace Folder Manager");
-		mvprintw(1, 0, "↑/↓ move  a add  d delete  s save  q quit");
+		mvprintw(1, 0, "UP/DOWN move  a add  d delete  s save  q quit");
 		if (message[0] != '\0')
 			mvprintw(2, 0, "%s", message);
 		i = 0;
@@ -254,7 +254,7 @@ static int	run_ui(t_dirs *dirs)
 		}
 		if (ch == KEY_UP && selected > 0)
 			selected--;
-		else if (ch == KEY_DOWN && selected < dirs->count - 1)
+		else if (ch == KEY_DOWN && dirs->count > 0 && selected < dirs->count - 1)
 			selected++;
 		else if (ch == 'd')
 		{
@@ -330,7 +330,7 @@ int	main(int argc, char **argv)
 		return (print_usage(argv[0]), dirs_free(&dirs), 1);
 	if (!is_valid_workspace_name(workspace_name))
 		return (fprintf(stderr,
-				"workspace_saver: invalid workspace name (must not be empty and contain only letters, numbers, '_' or '-')\n"),
+				"workspace_saver: invalid workspace name (must be non-empty and contain only letters, numbers, '_' or '-')\n"),
 			dirs_free(&dirs), 1);
 	if (dirs.count == 0)
 	{
