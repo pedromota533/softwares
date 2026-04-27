@@ -1,4 +1,4 @@
-PROJECTS = port_scanner tgrep
+PROJECTS = port_scanner tgrep workspace_saver
 
 all: $(PROJECTS) btop
 
