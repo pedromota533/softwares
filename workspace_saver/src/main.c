@@ -272,7 +272,7 @@ static int	run_ui(t_dirs *dirs)
 			curs_set(1);
 			mvprintw(LINES - 2, 0, "Add folder path: ");
 			clrtoeol();
-			getnstr(input, (int)sizeof(input) - 1);
+			getnstr(input, (int)(sizeof(input) - 1));
 			noecho();
 			curs_set(0);
 			if (input[0] == '\0')
