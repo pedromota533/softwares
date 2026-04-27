@@ -22,11 +22,20 @@ sudo make uninstall
 ## Usage
 
 ```sh
-./workspace_saver <workspace_name> [directory ...]
+./workspace_saver [--ui] <workspace_name> [directory ...]
 ```
 
 - If no directory is provided, the current directory is saved.
 - Workspace names accept letters, numbers, `_` and `-`.
+- `--ui` opens a terminal UI (ncurses) to manage folders before saving.
+
+UI controls:
+
+- `a`: add folder path
+- `d`: remove selected folder
+- `↑/↓`: change selection
+- `s` or `Enter`: save
+- `q` or `Esc`: quit without saving
 
 Saved file location:
 
